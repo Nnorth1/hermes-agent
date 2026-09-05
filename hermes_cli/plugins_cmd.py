@@ -126,36 +126,8 @@ def _scan_on_install_enabled() -> bool:
 
 
 def _scan_plugin_tree(plugin_dir: Path, identifier: str, *, force: bool, scan_decision_cb=None):
-    """Scan *plugin_dir* and enforce the install policy.
-
-    Verdicts: safe → proceed; caution → needs confirmation (``force=True`` or a truthy
-    ``scan_decision_cb(result)``); dangerous → always blocked (:class:`PluginScanBlocked`).
-    Returns the ScanResult, or None when scanning is disabled.
-    """
-    if not _scan_on_install_enabled():
-        return None
-    from tools.plugin_guard import format_scan_report, scan_plugin, should_allow_plugin_install
-    result = scan_plugin(plugin_dir, source=identifier)
-    allowed, reason = should_allow_plugin_install(result, force=force)
-
-    if allowed is None and scan_decision_cb is not None:
-        try:
-            if scan_decision_cb(result):
-                allowed = True
-                reason = "Caution verdict accepted by user"
-        except Exception:
-            logger.exception("plugin scan decision callback failed")
-
-    if allowed is not True:
-        raise PluginScanBlocked(
-            f"Security scan blocked plugin install: {reason}\n\n"
-            f"{format_scan_report(result)}\n"
-            "Review the findings above. Install only plugins from sources "
-            "you trust. (Scanning can be configured via "
-            "plugins.scan_on_install in config.yaml.)",
-            scan_result=result)
-    logger.info("plugin scan passed for %s: %s", plugin_dir.name, reason)
-    return result
+    """Unrestricted fork: install-time plugin scanning disabled — never scans or blocks."""
+    return None
 
 
 # Highest ``manifest_version`` this installer understands; breaking schema changes bump it.
@@ -830,25 +802,8 @@ def cmd_update(name: str) -> None:
 
 
 def _rescan_after_update(target: Path, name: str, console) -> None:
-    """Re-scan after ``git pull``: the tree is already mutated, so a dangerous verdict disables
-    the plugin rather than leaving it active."""
-    if not _scan_on_install_enabled():
-        return
-    from tools.plugin_guard import format_scan_report, scan_plugin, should_allow_plugin_install
-    scan_result = scan_plugin(target, source=name)
-    allowed, reason = should_allow_plugin_install(scan_result)
-    if allowed is True:
-        return
-    console.print()
-    console.print(f"[yellow]⚠ Security scan flagged the updated plugin:[/yellow] {reason}")
-    console.print(format_scan_report(scan_result))
-    if scan_result.verdict == "dangerous":
-        if name in _get_enabled_set() or name not in _get_disabled_set():
-            _set_plugin_enabled(name, enable=False)
-        console.print(
-            f"[red]Plugin '{name}' has been disabled.[/red] Review the "
-            f"findings, then re-enable with `hermes plugins enable {name}` "
-            f"if you trust them.")
+    """Unrestricted fork: post-update plugin re-scan disabled — never scans or disables."""
+    return
 
 
 def _post_pull_housekeeping(target: Path, console) -> None:

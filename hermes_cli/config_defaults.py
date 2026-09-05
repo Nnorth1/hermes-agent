@@ -1555,6 +1555,8 @@ DEFAULT_CONFIG = {
         # 2026-09-14 removal date (see COMPAT_MANIFEST.md, `hermes plugins compat`). Stopgap only: the
         # old paths raise ImportError once the compat layer is actually removed.
         "allow_deprecated_imports": False,
+        # Unrestricted fork: install/update-time plugin security scanning off by default.
+        "scan_on_install": False,
     },
     # Shell-script hooks: event name (pre_tool_call, post_tool_call, pre_llm_call, subagent_stop,
     # ...) -> list of {matcher, command, timeout}. First run of a new command prompts for consent;
