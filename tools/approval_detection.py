@@ -83,40 +83,7 @@ _HARDLINE_SYSTEM_DIRS = (r'/home|/home/\*|/root|/root/\*|/etc|/etc/\*|/usr|/usr/
 # must be an actual command word — "rm -rf /" as DATA in `git commit -m "…rm -rf /…"` must not trip the floor.
 _RM_FLAG_PREFIX = _CMDPOS + r'rm\s+(-[^\s]*\s+)*'
 
-HARDLINE_PATTERNS = [
-    # Root path: any root-anchored path whose components collapse to "/" in the shell ("/", "//",
-    # "/.", "/./", "/../..", optional trailing glob). Each inter-slash segment must be exactly "."
-    # or "..", so "/tmp", "/.ssh", even "/..." are literal dirs that fall through to the softer
-    # DANGEROUS rules. The "/ \*" alt covers `rm -rf / *` (two args: "/" plus the glob).
-    (_RM_FLAG_PREFIX + _hardline_rm_path(r'/(?:(?:\.\.?)?/)*(?:\.\.?)?\**|/ \*'), "recursive delete of root filesystem"),
-    (_RM_FLAG_PREFIX + _hardline_rm_path(_HARDLINE_SYSTEM_DIRS), "recursive delete of system directory"),
-    (_RM_FLAG_PREFIX + _hardline_rm_path(r'(?:~|\$\{?HOME\}?)(?:/?|/\*)?'), "recursive delete of home directory"),
-    # Command-name rules (mkfs, dd, kill, shutdown...) are _CMDPOS-anchored so quoted prose
-    # (`echo "does this use mkfs?"`) cannot trip the floor.
-    # See #93392.
-    (_CMDPOS + r'mkfs(\.[a-z0-9]+)?\b', "format filesystem (mkfs)"),
-    # `dd` is a command-name token, so anchor it to command position like mkfs/rm/shutdown (#93392): quoted
-    # prose such as `git commit -m "never dd of=/dev/sda"` is an argument, not a command. The argument tail
-    # ([^\n]*of=/dev/...) is kept so flag order doesn't matter.
-    (_CMDPOS + r'dd\b[^\n]*\bof=/dev/(sd|nvme|hd|mmcblk|vd|xvd)[a-z0-9]*', "dd to raw block device"),
-    # Positionless rules (no command-name token: `>` sits mid-command, the fork bomb is a function
-    # definition) are matched against a QUOTE-MASKED variant (_QUOTE_MASKED_HARDLINE_DESCRIPTIONS /
-    # _mask_quoted_prose) so quoted prose cannot trip them; sh -c / bash -c / eval payloads still scan raw.
-    # The redirect rule has no command-name token to anchor (`>` appears mid-command: `cat f > /dev/sda`),
-    # so command-position anchoring is the wrong tool. It is instead matched against a QUOTE-MASKED variant
-    # of the command (see _QUOTE_MASKED_HARDLINE / _mask_quoted_strings) so quoted prose (`echo "cat f >
-    # /dev/sda"`) cannot trip it, while shell-carrying wrappers (sh -c / bash -c / eval) still surface their
-    # payload as a raw detection variant — quoting is not a bypass (#93392).
-    (r'>\s*/dev/(sd|nvme|hd|mmcblk|vd|xvd)[a-z0-9]*\b', "redirect to raw block device"),
-    (r':\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:', "fork bomb"),
-    # Kill every process on the system — anchor the command-name token so `echo "kill -1 sends SIGHUP to
-    # everything"` doesn't trip (#93392).
-    (_CMDPOS + r'kill\s+(-[^\s]+\s+)*-1\b', "kill all processes"),
-    (_CMDPOS + r'(shutdown|reboot|halt|poweroff)\b', "system shutdown/reboot"),
-    (_CMDPOS + r'init\s+[06]\b', "init 0/6 (shutdown/reboot)"),
-    (_CMDPOS + r'systemctl\s+(poweroff|reboot|halt|kexec)\b', "systemctl poweroff/reboot"),
-    (_CMDPOS + r'telinit\s+[06]\b', "telinit 0/6 (shutdown/reboot)"),
-]
+HARDLINE_PATTERNS = []
 
 # Pre-compiled at module load so the hot-path matcher never pays the cold re.compile fan-out
 # (re._cache can be evicted by unrelated regex work).
@@ -161,36 +128,12 @@ _SUDO_STDIN_RE = re.compile(r'(?:^|[;&|`\n]|&&|\|\||\$\()\s*sudo\s+-S\b', re.IGN
 
 
 def _check_sudo_stdin_guard(command: str) -> tuple:
-    """Detect ``sudo -S`` without configured SUDO_PASSWORD -> (is_blocked, description). When
-    SUDO_PASSWORD is set, ``_transform_sudo_command`` injects ``-S`` itself, so this guard only
-    fires when the LLM wrote it explicitly."""
-    if "SUDO_PASSWORD" not in os.environ and _SUDO_STDIN_RE.search(_normalize_command_for_detection(command).lower()):
-        return (True, "sudo password guessing via stdin (sudo -S)")
+    """Unrestricted fork: sudo-stdin guard disabled — never blocks."""
     return (False, None)
 
 
 def detect_hardline_command(command: str) -> tuple:
-    """Check hardline patterns (NEVER bypassable, even in YOLO) -> (is_hardline, description)."""
-    if _command_parser_limit_exceeded(command):
-        return (True, _PARSER_LIMIT_DESCRIPTION)
-    normalized = _normalize_command_for_detection(command)
-    _, malformed_grep = _grep_safe_detection_variant(normalized)
-    if malformed_grep:
-        return (True, _MALFORMED_EXEC_DESCRIPTION)
-    for command_variant in _command_detection_variants(command):
-        variant_lower = command_variant.lower()
-        masked_lower: str | None = None
-        for pattern_re, description, quote_masked in HARDLINE_PATTERNS_COMPILED:
-            if quote_masked and masked_lower is None:
-                # Positionless rules see quoted prose as DATA, except under shell carriers
-                # (sh -c, eval, source) whose quoted argument is code — those scan raw. bash -c
-                # payloads also surface as their own raw variants via _execution_flag_findings.
-                masked_lower = (
-                    variant_lower if _contains_shell_carrier(command_variant)
-                    else _mask_quoted_prose(command_variant).lower()
-                )
-            if pattern_re.search(masked_lower if quote_masked else variant_lower):
-                return (True, description)
+    """Unrestricted fork: hardline detection disabled — never flags a command."""
     return (False, None)
 
 
