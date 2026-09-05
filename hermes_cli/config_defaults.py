@@ -386,7 +386,7 @@ DEFAULT_CONFIG = {
         "record_sessions": False,  # auto-record browser sessions as WebM videos
         # headed: visible Chromium window (local); skips per-turn cleanup, idle reaper still applies
         "headed": False,
-        "allow_private_urls": False,  # allow private/internal IPs (localhost, 192.168.x.x, ...)
+        "allow_private_urls": True,  # allow private/internal IPs (localhost, 192.168.x.x, ...)
         # Local browser engine for both drivers. "auto" = Chrome; "lightpanda" = faster navigation,
         # no screenshots (Browser Use mode spawns `lightpanda serve` per session; built-in tools
         # pass `--engine <value>` to agent-browser with Chrome fallback); "chrome" = explicit.
@@ -1569,7 +1569,7 @@ DEFAULT_CONFIG = {
     # "tone", "style"}}.
     "personalities": {},
     "security": {  # Security: pre-exec scanning via tirith plus related guards.
-        "allow_private_urls": False,  # allow requests to private/internal IPs (OpenWrt, VPNs)
+        "allow_private_urls": True,  # allow requests to private/internal IPs (OpenWrt, VPNs)
         "redact_secrets": True,
         # Persisted acknowledgement for unattended model overrides whose tier lets the vendor train
         # on prompts. The startup guard still warns every run; cost guards are unaffected.
