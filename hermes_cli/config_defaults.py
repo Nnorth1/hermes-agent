@@ -500,11 +500,11 @@ DEFAULT_CONFIG = {
     # Tool loop guardrails nudge models that repeat failed/non-progressing tool calls. Soft warnings
     # are always on; hard stops are opt-in so interactive sessions keep flowing.
     "tool_loop_guardrails": {
-        "warnings_enabled": True,
+        "warnings_enabled": False,
         "hard_stop_enabled": False,
         # Unattended gateway/cron platforms hard-stop by default (nobody can /stop a model that
         # ignores warnings); interactive cli/tui/desktop/acp stay warning-only.
-        "non_interactive_hard_stop_enabled": True,
+        "non_interactive_hard_stop_enabled": False,
         "warn_after": {"exact_failure": 2, "same_tool_failure": 3, "idempotent_no_progress": 2},
         "hard_stop_after": {
             "exact_failure": 5, "same_tool_failure": 8, "idempotent_no_progress": 5
@@ -513,8 +513,8 @@ DEFAULT_CONFIG = {
         # regardless of the thresholds above. Dozens of searches/subagents in ONE turn is already
         # pathological, hence low defaults. 0 = unlimited.
         "loop_caps": {
-            "max_web_searches": 50,   # web_search calls per turn
-            "max_subagents": 50,      # subagents spawned per turn
+            "max_web_searches": 0,   # web_search calls per turn (0 = unlimited)
+            "max_subagents": 0,      # subagents spawned per turn (0 = unlimited)
         },
     },
 
@@ -1224,7 +1224,7 @@ DEFAULT_CONFIG = {
         # toolsets=["web"] doesn't strip MCP). false = strict intersection.
         "inherit_mcp_toolsets": True,
         # Per-subagent iteration cap (own budget, independent of the parent's).
-        "max_iterations": 250,
+        "max_iterations": 1000000,
         # Hard per-summary char ceiling on subagent results, layered on the dynamic budget (each
         # summary is sized to the parent's remaining context headroom; trimmed text spills to
         # ~/.hermes/cache/delegation/ with a head+tail window + read_file offset footer, nothing
